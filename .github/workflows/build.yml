@@ -22,6 +22,12 @@ jobs:
         with:
           gradle-version: '8.7'
           
+      - name: Force AndroidX Properties
+        run: |
+          cd android
+          echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          
       - name: Build APK
         run: |
           cd android
